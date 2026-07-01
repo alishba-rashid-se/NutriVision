@@ -52,7 +52,7 @@ This repository demonstrates a complete Manual QA testing process performed on t
 ## Test Statistics
 
 - Test Scenarios: 43
-- Test Cases: 65
+- Test Cases: 62
 - Bugs Reported: 5
 - Bugs Closed: 5
 - Regression Testing: Completed
