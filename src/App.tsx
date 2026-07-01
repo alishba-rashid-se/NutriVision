@@ -31,13 +31,21 @@ function DarkModeSync() {
 
 function Router() {
   const { route, navigate } = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (!isAuthenticated && PROTECTED.includes(route)) {
+    if (!authLoading && !isAuthenticated && PROTECTED.includes(route)) {
       navigate('auth');
     }
-  }, [isAuthenticated, route, navigate]);
+  }, [isAuthenticated, authLoading, route, navigate]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-mint-50 via-white to-emerald-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="w-10 h-10 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated && PROTECTED.includes(route)) {
     return <AuthPage />;

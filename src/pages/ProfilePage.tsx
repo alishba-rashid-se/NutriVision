@@ -1,52 +1,128 @@
-import { useState } from 'react';
-import { User, Mail, Calendar, Ruler, Weight, Target, Moon, Bell, Globe, Lock, Check, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User, Mail, Calendar, Ruler, Weight, Target, Moon, Bell, Globe, Lock, Check, LogOut, AlertCircle } from 'lucide-react';
 import { useNutrition } from '../context/NutritionContext';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from '../context/RouterContext';
 import { useToast } from '../context/ToastContext';
+import { t } from '../lib/i18n';
 import type { Goal, Settings } from '../types';
 
+interface ValidationErrors {
+  name?: string;
+  email?: string;
+  age?: string;
+  height?: string;
+  weight?: string;
+}
+
 export function ProfilePage() {
-  const { profile, updateProfile, settings, updateSettings } = useNutrition();
+  const { profile, updateProfile, settings, updateSettings, isLoading } = useNutrition();
   const { user, signOut } = useAuth();
   const { navigate } = useRouter();
   const { showToast } = useToast();
-  const [form, setForm] = useState(profile);
+  const [form, setForm] = useState({
+    name: profile?.name || '',
+    email: profile?.email || '',
+    age: profile?.age || 0,
+    height: profile?.height || 0,
+    weight: profile?.weight || 0,
+    goal: profile?.goal || 'maintain' as Goal,
+  });
   const [saving, setSaving] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        name: profile.name,
+        email: profile.email,
+        age: profile.age || 0,
+        height: profile.height || 0,
+        weight: profile.weight || 0,
+        goal: profile.goal,
+      });
+    }
+  }, [profile]);
+
+  const validateField = (field: string, value: string | number): string | undefined => {
+    if (field === 'name') {
+      if (!String(value).trim()) return t('fieldRequired');
+    }
+    if (field === 'age') {
+      const num = Number(value);
+      if (num < 1 || num > 150) return t('invalidAge');
+    }
+    if (field === 'height') {
+      const num = Number(value);
+      if (num < 50 || num > 300) return t('invalidHeight');
+    }
+    if (field === 'weight') {
+      const num = Number(value);
+      if (num < 10 || num > 500) return t('invalidWeight');
+    }
+    return undefined;
+  };
+
+  const validateForm = (): boolean => {
+    const errors: ValidationErrors = {};
+    errors.name = validateField('name', form.name);
+    if (form.age) errors.age = validateField('age', form.age);
+    if (form.height) errors.height = validateField('height', form.height);
+    if (form.weight) errors.weight = validateField('weight', form.weight);
+    setValidationErrors(errors);
+    return !Object.values(errors).some(Boolean);
+  };
+
+  const handleFieldChange = (field: string, value: string | number) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    const error = validateField(field, value);
+    setValidationErrors((prev) => ({ ...prev, [field]: error }));
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) {
+      showToast('Please fix validation errors before saving.', 'error');
+      return;
+    }
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 700));
-    updateProfile(form);
+    await updateProfile(form);
     setSaving(false);
-    showToast('Profile updated successfully.', 'success');
+    showToast(t('profileUpdated'), 'success');
   };
 
   const handleSettingChange = <K extends keyof Settings>(key: K, value: Settings[K]) => {
     updateSettings({ ...settings, [key]: value });
     if (key === 'darkMode') {
-      showToast(value ? 'Dark mode enabled.' : 'Light mode enabled.', 'info');
+      showToast(value ? t('darkModeEnabled') : t('lightModeEnabled'), 'info');
     }
   };
 
-  const handleSignOut = () => {
-    signOut();
-    showToast('You have been signed out.', 'info');
+  const handleSignOut = async () => {
+    await signOut();
+    showToast(t('signedOut'), 'info');
     navigate('landing');
   };
 
   const goals: { value: Goal; label: string }[] = [
-    { value: 'lose', label: 'Lose Weight' },
-    { value: 'gain', label: 'Gain Weight' },
-    { value: 'maintain', label: 'Maintain Weight' },
+    { value: 'lose', label: t('loseWeight') },
+    { value: 'gain', label: t('gainWeight') },
+    { value: 'maintain', label: t('maintainWeight') },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="w-8 h-8 border-3 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
       <div>
-        <h1 className="font-display font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white">Profile & Settings</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">Manage your personal info and app preferences.</p>
+        <h1 className="font-display font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white">{t('profileSettings')}</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-1">{t('manageInfo')}</p>
       </div>
 
       {/* Profile header */}
@@ -65,51 +141,75 @@ export function ProfilePage() {
         <form onSubmit={handleSave} className="glass rounded-2xl p-6 space-y-5">
           <h3 className="font-display font-semibold text-slate-800 dark:text-white flex items-center gap-2">
             <User className="w-5 h-5 text-emerald-600" />
-            Personal Information
+            {t('personalInformation')}
           </h3>
           <div className="grid sm:grid-cols-2 gap-4">
-            <Field icon={User} label="Name">
+            <Field
+              icon={User}
+              label={t('name')}
+              error={validationErrors.name}
+              required
+            >
               <input
                 type="text"
                 value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                onChange={(e) => handleFieldChange('name', e.target.value)}
                 className="w-full bg-transparent text-slate-900 dark:text-white focus:outline-none"
               />
             </Field>
-            <Field icon={Mail} label="Email">
+            <Field
+              icon={Mail}
+              label={t('email')}
+              disabled
+            >
               <input
                 type="email"
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full bg-transparent text-slate-900 dark:text-white focus:outline-none"
+                disabled
+                className="w-full bg-transparent text-slate-400 dark:text-slate-500 focus:outline-none cursor-not-allowed"
               />
             </Field>
-            <Field icon={Calendar} label="Age">
+            <Field
+              icon={Calendar}
+              label={t('age')}
+              error={validationErrors.age}
+            >
               <input
                 type="number"
-                value={form.age}
-                onChange={(e) => setForm({ ...form, age: Number(e.target.value) })}
+                value={form.age || ''}
+                onChange={(e) => handleFieldChange('age', Number(e.target.value) || 0)}
                 className="w-full bg-transparent text-slate-900 dark:text-white focus:outline-none no-spin"
+                placeholder="--"
               />
             </Field>
-            <Field icon={Ruler} label="Height (cm)">
+            <Field
+              icon={Ruler}
+              label={t('heightCm')}
+              error={validationErrors.height}
+            >
               <input
                 type="number"
-                value={form.height}
-                onChange={(e) => setForm({ ...form, height: Number(e.target.value) })}
+                value={form.height || ''}
+                onChange={(e) => handleFieldChange('height', Number(e.target.value) || 0)}
                 className="w-full bg-transparent text-slate-900 dark:text-white focus:outline-none no-spin"
+                placeholder="--"
               />
             </Field>
-            <Field icon={Weight} label="Weight (kg)">
+            <Field
+              icon={Weight}
+              label={t('weightKg')}
+              error={validationErrors.weight}
+            >
               <input
                 type="number"
-                value={form.weight}
-                onChange={(e) => setForm({ ...form, weight: Number(e.target.value) })}
+                value={form.weight || ''}
+                onChange={(e) => handleFieldChange('weight', Number(e.target.value) || 0)}
                 className="w-full bg-transparent text-slate-900 dark:text-white focus:outline-none no-spin"
+                placeholder="--"
               />
             </Field>
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Fitness Goal</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">{t('fitnessGoal')}</label>
               <div className="relative">
                 <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 <select
@@ -132,12 +232,12 @@ export function ProfilePage() {
             {saving ? (
               <>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Saving...
+                {t('saving')}
               </>
             ) : (
               <>
                 <Check className="w-4 h-4" />
-                Save Changes
+                {t('saveChanges')}
               </>
             )}
           </button>
@@ -146,25 +246,25 @@ export function ProfilePage() {
         {/* Settings */}
         <div className="space-y-6">
           <div className="glass rounded-2xl p-6 space-y-1">
-            <h3 className="font-display font-semibold text-slate-800 dark:text-white mb-4">Settings</h3>
+            <h3 className="font-display font-semibold text-slate-800 dark:text-white mb-4">{t('settings')}</h3>
             <ToggleRow
               icon={Moon}
-              label="Dark Mode"
-              description="Switch between light and dark themes"
+              label={t('darkMode')}
+              description={t('darkModeDesc')}
               checked={settings.darkMode}
               onChange={(v) => handleSettingChange('darkMode', v)}
             />
             <ToggleRow
               icon={Bell}
-              label="Push Notifications"
-              description="Get reminders to log meals and water"
+              label={t('pushNotifications')}
+              description={t('pushNotificationsDesc')}
               checked={settings.pushNotifications}
               onChange={(v) => handleSettingChange('pushNotifications', v)}
             />
             <ToggleRow
               icon={Lock}
-              label="Privacy"
-              description="Keep your nutrition data private"
+              label={t('privacy')}
+              description={t('privacyDesc')}
               checked={settings.privacy}
               onChange={(v) => handleSettingChange('privacy', v)}
             />
@@ -174,8 +274,8 @@ export function ProfilePage() {
                   <Globe className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-800 dark:text-white">Language</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">App display language</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-white">{t('language')}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('languageDesc')}</p>
                 </div>
               </div>
               <select
@@ -197,7 +297,7 @@ export function ProfilePage() {
             className="w-full glass rounded-2xl p-4 flex items-center justify-center gap-2 text-red-500 font-semibold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
           >
             <LogOut className="w-5 h-5" />
-            Sign Out
+            {t('signOut')}
           </button>
         </div>
       </div>
@@ -205,14 +305,42 @@ export function ProfilePage() {
   );
 }
 
-function Field({ icon: Icon, label, children }: { icon: typeof User; label: string; children: React.ReactNode }) {
+function Field({
+  icon: Icon,
+  label,
+  children,
+  error,
+  required,
+  disabled,
+}: {
+  icon: typeof User;
+  label: string;
+  children: React.ReactNode;
+  error?: string;
+  required?: boolean;
+  disabled?: boolean;
+}) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">{label}</label>
-      <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus-within:ring-2 focus-within:ring-emerald-400 transition-all">
-        <Icon className="w-4 h-4 text-slate-400 flex-shrink-0" />
+      <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border transition-all ${
+        error
+          ? 'border-red-300 dark:border-red-700'
+          : disabled
+            ? 'border-slate-100 dark:border-slate-800'
+            : 'border-slate-200 dark:border-slate-700 focus-within:ring-2 focus-within:ring-emerald-400'
+      }`}>
+        <Icon className={`w-4 h-4 flex-shrink-0 ${error ? 'text-red-400' : 'text-slate-400'}`} />
         {children}
       </div>
+      {error && (
+        <p className="flex items-center gap-1 text-xs text-red-500 mt-1.5">
+          <AlertCircle className="w-3 h-3" />
+          {error}
+        </p>
+      )}
     </div>
   );
 }

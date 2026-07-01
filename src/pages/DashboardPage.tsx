@@ -13,7 +13,8 @@ import { useRouter } from '../context/RouterContext';
 import { useNutrition } from '../context/NutritionContext';
 import { useAuth } from '../context/AuthContext';
 import { ProgressRing } from '../components/ProgressRing';
-import { WEEKLY_CALORIES } from '../data/mockData';
+import { t } from '../lib/i18n';
+import { useMemo } from 'react';
 
 function MacroBar({ label, value, max, unit, color }: { label: string; value: number; max: number; unit: string; color: string }) {
   const pct = Math.min((value / max) * 100, 100);
@@ -38,12 +39,43 @@ function MacroBar({ label, value, max, unit, color }: { label: string; value: nu
 export function DashboardPage() {
   const { navigate } = useRouter();
   const { user } = useAuth();
-  const { todayTotals, dailyGoals, waterIntake, addWater, removeWater, history } = useNutrition();
+  const { todayTotals, dailyGoals, waterIntake, addWater, removeWater, history, isLoading } = useNutrition();
 
-  const maxWeekly = Math.max(...WEEKLY_CALORIES, dailyGoals.calories);
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const recent = history.slice(0, 3);
   const waterPct = Math.min((waterIntake / dailyGoals.water) * 100, 100);
+
+  const weeklyCalories = useMemo(() => {
+    const days: number[] = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dayStart = new Date(date.setHours(0, 0, 0, 0));
+      const dayEnd = new Date(date.setHours(23, 59, 59, 999));
+      const dayTotal = history
+        .filter((h) => {
+          const ts = new Date(h.timestamp);
+          return ts >= dayStart && ts <= dayEnd;
+        })
+        .reduce((sum, h) => sum + h.calories, 0);
+      days.push(dayTotal);
+    }
+    return days;
+  }, [history]);
+
+  const maxWeekly = Math.max(...weeklyCalories, dailyGoals.calories);
+  const dayNames = [t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat'), t('sun')];
+  const todayIndex = 6;
+
+  const remainingCalories = dailyGoals.calories - todayTotals.calories;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="w-8 h-8 border-3 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -51,16 +83,16 @@ export function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white">
-            Hello, {user?.name?.split(' ')[0] || 'there'}!
+            {t('hello')}, {user?.name?.split(' ')[0] || 'there'}!
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Here is your nutrition snapshot for today.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">{t('nutritionSnapshot')}</p>
         </div>
         <button
           onClick={() => navigate('analyzer')}
           className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-mint-500 text-white font-semibold shadow-glow hover:shadow-elevated hover:scale-105 transition-all"
         >
           <ScanLine className="w-5 h-5" />
-          Quick Upload
+          {t('quickUpload')}
         </button>
       </div>
 
@@ -71,13 +103,13 @@ export function DashboardPage() {
           <ProgressRing
             value={todayTotals.calories}
             max={dailyGoals.calories}
-            label="Calories"
-            sublabel={`of ${dailyGoals.calories} kcal`}
+            label={t('calories')}
+            sublabel={`${t('of')} ${dailyGoals.calories} ${t('kcal')}`}
             unit=""
           />
           <div className="flex items-center gap-2 mt-4 text-sm text-slate-500 dark:text-slate-400">
             <Flame className="w-4 h-4 text-orange-500" />
-            <span>{dailyGoals.calories - todayTotals.calories > 0 ? `${dailyGoals.calories - todayTotals.calories} kcal remaining` : 'Goal reached'}</span>
+            <span>{remainingCalories > 0 ? `${remainingCalories} ${t('kcal')} ${t('remaining')}` : t('goalReached')}</span>
           </div>
         </div>
 
@@ -85,18 +117,18 @@ export function DashboardPage() {
         <div className="glass rounded-2xl p-6 space-y-5">
           <h3 className="font-display font-semibold text-slate-800 dark:text-white flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-emerald-600" />
-            Macro Targets
+            {t('macroTargets')}
           </h3>
-          <MacroBar label="Protein" value={todayTotals.protein} max={dailyGoals.protein} unit="g" color="bg-gradient-to-r from-emerald-500 to-emerald-400" />
-          <MacroBar label="Carbs" value={todayTotals.carbs} max={dailyGoals.carbs} unit="g" color="bg-gradient-to-r from-amber-500 to-amber-400" />
-          <MacroBar label="Fat" value={todayTotals.fat} max={dailyGoals.fat} unit="g" color="bg-gradient-to-r from-rose-500 to-rose-400" />
+          <MacroBar label={t('protein')} value={todayTotals.protein} max={dailyGoals.protein} unit="g" color="bg-gradient-to-r from-emerald-500 to-emerald-400" />
+          <MacroBar label={t('carbs')} value={todayTotals.carbs} max={dailyGoals.carbs} unit="g" color="bg-gradient-to-r from-amber-500 to-amber-400" />
+          <MacroBar label={t('fat')} value={todayTotals.fat} max={dailyGoals.fat} unit="g" color="bg-gradient-to-r from-rose-500 to-rose-400" />
         </div>
 
         {/* Water tracker */}
         <div className="glass rounded-2xl p-6 flex flex-col">
           <h3 className="font-display font-semibold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
             <Droplet className="w-5 h-5 text-mint-500" />
-            Water Intake
+            {t('waterIntake')}
           </h3>
           <div className="flex-1 flex items-center justify-center">
             <div className="relative w-32 h-40 rounded-2xl border-2 border-mint-200 dark:border-mint-800 overflow-hidden bg-mint-50 dark:bg-mint-900/20">
@@ -108,8 +140,8 @@ export function DashboardPage() {
               </div>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="font-display font-extrabold text-3xl text-slate-800 dark:text-white drop-shadow">{waterIntake}</span>
-                <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">of {dailyGoals.water}</span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">glasses</span>
+                <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">{t('of')} {dailyGoals.water}</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('glasses')}</span>
               </div>
             </div>
           </div>
@@ -137,13 +169,13 @@ export function DashboardPage() {
         {/* Weekly chart */}
         <div className="lg:col-span-3 glass rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-display font-semibold text-slate-800 dark:text-white">Weekly Calorie Intake</h3>
-            <span className="text-sm text-slate-500 dark:text-slate-400">Last 7 days</span>
+            <h3 className="font-display font-semibold text-slate-800 dark:text-white">{t('weeklyCalorieIntake')}</h3>
+            <span className="text-sm text-slate-500 dark:text-slate-400">{t('last7Days')}</span>
           </div>
           <div className="flex items-end justify-between gap-2 h-48">
-            {WEEKLY_CALORIES.map((cal, i) => {
-              const h = (cal / maxWeekly) * 100;
-              const isToday = i === WEEKLY_CALORIES.length - 1;
+            {weeklyCalories.map((cal, i) => {
+              const h = maxWeekly > 0 ? (cal / maxWeekly) * 100 : 0;
+              const isToday = i === todayIndex;
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
                   <div className="relative w-full flex items-end justify-center" style={{ height: '100%' }}>
@@ -160,7 +192,7 @@ export function DashboardPage() {
                       </div>
                     </div>
                   </div>
-                  <span className={`text-xs font-medium ${isToday ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>{days[i]}</span>
+                  <span className={`text-xs font-medium ${isToday ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>{dayNames[i]}</span>
                 </div>
               );
             })}
@@ -170,14 +202,14 @@ export function DashboardPage() {
         {/* Recent activity */}
         <div className="lg:col-span-2 glass rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display font-semibold text-slate-800 dark:text-white">Recent Analyses</h3>
+            <h3 className="font-display font-semibold text-slate-800 dark:text-white">{t('recentAnalyses')}</h3>
             <button onClick={() => navigate('history')} className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline font-medium flex items-center gap-1">
-              View all <ArrowRight className="w-3.5 h-3.5" />
+              {t('viewAll')} <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
           <div className="space-y-3">
             {recent.length === 0 && (
-              <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-8">No recent items yet.</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-8">{t('noRecentItems')}</p>
             )}
             {recent.map((item) => (
               <div key={item.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-emerald-50/50 dark:hover:bg-slate-800/40 transition-colors">
@@ -190,7 +222,7 @@ export function DashboardPage() {
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{item.name}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{item.calories} kcal · {item.protein}g protein</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{item.calories} {t('kcal')} · {item.protein}g {t('protein')}</p>
                 </div>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0 ${item.isHealthy ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'}`}>
                   {item.healthScore}
@@ -204,10 +236,10 @@ export function DashboardPage() {
       {/* Quick stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { icon: Flame, label: 'Today', value: `${todayTotals.calories}`, unit: 'kcal', color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/20' },
-          { icon: Beef, label: 'Protein', value: `${todayTotals.protein}`, unit: 'g', color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
-          { icon: Wheat, label: 'Carbs', value: `${todayTotals.carbs}`, unit: 'g', color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20' },
-          { icon: Droplet, label: 'Water', value: `${waterIntake}`, unit: 'glasses', color: 'text-mint-600', bg: 'bg-mint-50 dark:bg-mint-900/20' },
+          { icon: Flame, label: t('today'), value: `${todayTotals.calories}`, unit: t('kcal'), color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/20' },
+          { icon: Beef, label: t('protein'), value: `${todayTotals.protein}`, unit: 'g', color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+          { icon: Wheat, label: t('carbs'), value: `${todayTotals.carbs}`, unit: 'g', color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+          { icon: Droplet, label: t('waterIntake'), value: `${waterIntake}`, unit: t('glasses'), color: 'text-mint-600', bg: 'bg-mint-50 dark:bg-mint-900/20' },
         ].map((s) => (
           <div key={s.label} className="glass rounded-2xl p-4 flex items-center gap-3">
             <div className={`w-11 h-11 rounded-xl ${s.bg} flex items-center justify-center flex-shrink-0`}>

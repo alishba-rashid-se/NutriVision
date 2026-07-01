@@ -46,6 +46,7 @@ export interface Settings {
 export type AuthMode = 'signin' | 'signup' | 'forgot';
 
 export interface AuthUser {
+  id: string;
   name: string;
   email: string;
 }

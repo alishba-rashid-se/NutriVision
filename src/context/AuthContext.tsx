@@ -1,29 +1,84 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
 import type { AuthUser } from '../types';
-import { DEFAULT_PROFILE } from '../data/mockData';
+import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextValue {
   isAuthenticated: boolean;
   user: AuthUser | null;
-  signIn: (email: string, name?: string) => void;
-  signUp: (name: string, email: string) => void;
-  signOut: () => void;
+  isLoading: boolean;
+  signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  signUp: (name: string, email: string, password: string) => Promise<{ error?: string }>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function mapSupabaseUser(supabaseUser: User): AuthUser {
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email || '',
+    name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const signIn = (email: string, name?: string) => {
-    setUser({ email, name: name || DEFAULT_PROFILE.name });
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser(mapSupabaseUser(session.user));
+      }
+      setIsLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session: Session | null) => {
+      (async () => {
+        if (session?.user) {
+          setUser(mapSupabaseUser(session.user));
+        } else {
+          setUser(null);
+        }
+      })();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      if (error.message.includes('Invalid login credentials')) {
+        return { error: 'Invalid email or password' };
+      }
+      return { error: error.message };
+    }
+    return {};
   };
 
-  const signUp = (name: string, email: string) => {
-    setUser({ name, email });
+  const signUp = async (name: string, email: string, password: string): Promise<{ error?: string }> => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name },
+      },
+    });
+    if (error) {
+      if (error.message.includes('already registered')) {
+        return { error: 'An account with this email already exists' };
+      }
+      return { error: error.message };
+    }
+    return {};
   };
 
-  const signOut = () => {
+  const signOut = async () => {
+    await supabase.auth.signOut();
     setUser(null);
   };
 
@@ -32,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         isAuthenticated: user !== null,
         user,
+        isLoading,
         signIn,
         signUp,
         signOut,

@@ -3,6 +3,7 @@ import { Leaf, Mail, Lock, User, ArrowRight, ArrowLeft, Eye, EyeOff, Check } fro
 import { useRouter } from '../context/RouterContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { t } from '../lib/i18n';
 import type { AuthMode } from '../types';
 
 export function AuthPage() {
@@ -17,11 +18,11 @@ export function AuthPage() {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (mode === 'signup' && !form.name.trim()) e.name = 'Name is required';
-    if (!form.email.trim()) e.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email';
-    if (mode !== 'forgot' && !form.password) e.password = 'Password is required';
-    else if (mode !== 'forgot' && form.password.length < 6) e.password = 'Password must be at least 6 characters';
+    if (mode === 'signup' && !form.name.trim()) e.name = t('nameRequired');
+    if (!form.email.trim()) e.email = t('emailRequired');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = t('validEmail');
+    if (mode !== 'forgot' && !form.password) e.password = t('passwordRequired');
+    else if (mode !== 'forgot' && form.password.length < 6) e.password = t('passwordLength');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -30,21 +31,32 @@ export function AuthPage() {
     ev.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setSubmitting(false);
 
     if (mode === 'forgot') {
-      showToast('Password reset link sent to your email.', 'success');
+      showToast(t('passwordResetSent'), 'success');
       setMode('signin');
+      setSubmitting(false);
       return;
     }
+
     if (mode === 'signup') {
-      signUp(form.name, form.email);
-      showToast(`Welcome to NutriVision, ${form.name}!`, 'success');
+      const result = await signUp(form.name, form.email, form.password);
+      if (result.error) {
+        setErrors({ email: result.error });
+        setSubmitting(false);
+        return;
+      }
+      showToast(`${t('welcomeTo')}, ${form.name}!`, 'success');
     } else {
-      signIn(form.email);
-      showToast('Signed in successfully!', 'success');
+      const result = await signIn(form.email, form.password);
+      if (result.error) {
+        setErrors({ email: result.error });
+        setSubmitting(false);
+        return;
+      }
+      showToast(t('signedInSuccess'), 'success');
     }
+    setSubmitting(false);
     navigate('dashboard');
   };
 
@@ -92,7 +104,7 @@ export function AuthPage() {
             className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors mb-8"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to home
+            {t('backToHome')}
           </button>
 
           <div className="lg:hidden flex items-center gap-2.5 mb-8">
@@ -103,20 +115,20 @@ export function AuthPage() {
           </div>
 
           <h1 className="font-display font-bold text-3xl text-slate-900 dark:text-white mb-2">
-            {mode === 'signin' && 'Welcome back'}
-            {mode === 'signup' && 'Create your account'}
-            {mode === 'forgot' && 'Reset your password'}
+            {mode === 'signin' && t('welcomeBack')}
+            {mode === 'signup' && t('createAccount')}
+            {mode === 'forgot' && t('resetPassword')}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mb-8">
-            {mode === 'signin' && 'Sign in to continue your nutrition journey.'}
-            {mode === 'signup' && 'Start tracking your meals with AI today.'}
-            {mode === 'forgot' && 'Enter your email and we will send you a reset link.'}
+            {mode === 'signin' && t('signInToContinue')}
+            {mode === 'signup' && t('startTracking')}
+            {mode === 'forgot' && t('enterEmailReset')}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {mode === 'signup' && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Full Name</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('fullName')}</label>
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input
@@ -131,7 +143,7 @@ export function AuthPage() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Email Address</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('emailAddress')}</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
@@ -146,7 +158,7 @@ export function AuthPage() {
             </div>
             {mode !== 'forgot' && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Password</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('password')}</label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input
@@ -175,7 +187,7 @@ export function AuthPage() {
                   onClick={() => { setMode('forgot'); setErrors({}); }}
                   className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
                 >
-                  Forgot password?
+                  {t('forgotPassword')}
                 </button>
               </div>
             )}
@@ -192,9 +204,9 @@ export function AuthPage() {
                 </>
               ) : (
                 <>
-                  {mode === 'signin' && 'Sign In'}
-                  {mode === 'signup' && 'Create Account'}
-                  {mode === 'forgot' && 'Send Reset Link'}
+                  {mode === 'signin' && t('signIn')}
+                  {mode === 'signup' && t('createAccount')}
+                  {mode === 'forgot' && t('sendResetLink')}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -203,23 +215,23 @@ export function AuthPage() {
 
           {mode !== 'forgot' && (
             <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-6">
-              {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
+              {mode === 'signin' ? `${t('dontHaveAccount')} ` : `${t('alreadyHaveAccount')} `}
               <button
                 onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setErrors({}); }}
                 className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold"
               >
-                {mode === 'signin' ? 'Sign up' : 'Sign in'}
+                {mode === 'signin' ? t('signUp') : t('signIn')}
               </button>
             </p>
           )}
           {mode === 'forgot' && (
             <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-6">
-              Remember your password?{' '}
+              {t('rememberPassword')}{' '}
               <button
                 onClick={() => { setMode('signin'); setErrors({}); }}
                 className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold"
               >
-                Sign in
+                {t('signIn')}
               </button>
             </p>
           )}
