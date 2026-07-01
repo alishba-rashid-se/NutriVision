@@ -2,41 +2,57 @@
 
 ## Project Overview
 
-NutriVision is a modern AI-powered food recognition and nutrition analysis web application developed using React, TypeScript, and Tailwind CSS.
+NutriVision is a modern AI-powered web application developed using React, TypeScript, and Tailwind CSS. The application enables users to recognize food items from images, analyze nutritional values, search foods manually, track daily nutrition, and manage personal health information.
 
-This repository demonstrates a complete Manual QA testing process performed on the application.
-
----
-
-## Technologies
-
-- React
-- TypeScript
-- Tailwind CSS
-- GitHub
-- Jira
-- Microsoft Excel
+This repository demonstrates a complete **Manual Software Testing** process performed on the application, including planning, test design, execution, defect reporting, regression testing, and final test reporting.
 
 ---
 
-## Testing Performed
+## Live Demo
+
+https://nutrivision-food-rec-7o5j.bolt.host
+
+---
+
+## Source Code
+
+https://github.com/alishba-rashid-se/NutriVision
+
+---
+
+## Testing Scope
+
+The following modules were tested:
+
+- Landing Page
+- Authentication
+- Dashboard
+- AI Food Analyzer
+- Analysis Results
+- Manual Food Search
+- History
+- Profile
+- Settings
+- Responsive Design
+
+---
+
+## Testing Types Performed
 
 - Functional Testing
 - UI Testing
 - Form Validation Testing
 - Authentication Testing
-- Dashboard Testing
-- AI Food Analyzer Testing
-- Manual Food Search Testing
-- History Testing
-- Profile Testing
-- Settings Testing
+- Navigation Testing
 - Responsive Testing
 - Regression Testing
+- Smoke Testing
 
 ---
 
 ## QA Deliverables
+
+The repository contains the following QA documents:
 
 - Software Requirements Specification (SRS)
 - Test Plan
@@ -45,42 +61,82 @@ This repository demonstrates a complete Manual QA testing process performed on t
 - Bug Report
 - Regression Testing Report
 - Requirements Traceability Matrix (RTM)
+- Test Metrics
 - Test Summary Report
 
 ---
 
-## Test Statistics
+## Test Execution Summary
 
-- Test Scenarios: 43
-- Test Cases: 62
-- Bugs Reported: 5
-- Bugs Closed: 5
-- Regression Testing: Completed
+| Metric | Value |
+|---------|------:|
+| Test Scenarios | 43 |
+| Test Cases | 62 |
+| Executed | 62 |
+| Passed | 62 |
+| Failed | 0 |
+| Blocked | 0 |
+| Bugs Reported | 5 |
+| Bugs Closed | 5 |
+| Regression Testing | Completed |
 
 ---
 
-## Bug Tracking
+## Defect Tracking
 
-Defects were tracked and managed using Jira.
+Defects identified during testing were documented in **Bug Report.xlsx** and managed using **Jira**.
 
-Sample Jira screenshots are available in the screenshots folder.
+Reported defects included:
+
+- User session not maintained after page refresh
+- Incorrect user name displayed after login
+- Another user's profile and history displayed after login
+- Language selection not applied
+- Profile validation missing for mandatory fields
+
+All reported defects were verified after fixes and successfully closed through regression testing.
 
 ---
 
 ## Repository Structure
 
-QA_Documentation/
+```text
+NutriVision/
+│
+├── README.md
+├── screenshots/
+│
+├── QA_Documentation/
+│   ├── SRS.pdf
+│   ├── Test Plan.pdf
+│   ├── Test Scenarios.xlsx
+│   ├── Test Cases.xlsx
+│   ├── Bug Report.xlsx
+│   ├── Regression Testing.xlsx
+│   ├── RTM.xlsx
+│   ├── Test Metrics.xlsx
+│   └── Test Summary Report.pdf
+│
+├── src/
+├── public/
+└── package.json
+```
 
-Screenshots/
+---
 
-Source Code
+## Tools Used
 
-README.md
+- React
+- TypeScript
+- Tailwind CSS
+- Jira
+- GitHub
+- Microsoft Excel
 
 ---
 
 ## Author
 
-Alishba Rashid
+**Alishba Rashid**
 
-Manual QA Portfolio Project
+Manual QA Engineer Portfolio Project
