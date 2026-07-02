@@ -151,8 +151,18 @@ NutriVision/
 │
 ├── Screenshots/
 │   ├── Application/
+│   │   ├── landing-page.png
+│   │   ├── dashboard.png
+│   │   ├── analyzer.png
+│   │   └── profile.png
+│   │
 │   ├── QA/
+│   │   └── bug-report.png
+│   │
 │   └── Jira/
+│       ├── jira-todo.png
+│       ├── jira-in-progress.png
+│       └── jira-done.png
 │
 ├── src/
 ├── public/
